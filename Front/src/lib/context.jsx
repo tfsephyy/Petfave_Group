@@ -8,11 +8,7 @@ export function SessionProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [connectionError, setConnectionError] = useState('')
   const [toast, setToast] = useState(null)
-  const [theme, setTheme] = useState(
-    () =>
-      localStorage.getItem('petfave-theme') ||
-      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
-  )
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light')
   const refreshSession = async () => {
     try {
       const data = await api('/session')
@@ -45,8 +41,23 @@ export function SessionProvider({ children }) {
   }, [])
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    localStorage.setItem('petfave-theme', theme)
+    document.documentElement.style.colorScheme = theme
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'dark' ? '#111a28' : '#f8f7f3')
+    try {
+      localStorage.setItem('petfave-theme', theme)
+    } catch {
+      // Keep the selected theme for this session if storage is disabled.
+    }
   }, [theme])
+  useEffect(() => {
+    const syncTheme = (event) => {
+      if (event.key === 'petfave-theme') setTheme(event.newValue === 'dark' ? 'dark' : 'light')
+    }
+    window.addEventListener('storage', syncTheme)
+    return () => window.removeEventListener('storage', syncTheme)
+  }, [])
   useEffect(() => {
     if (toast) {
       const id = setTimeout(() => setToast(null), 5000)

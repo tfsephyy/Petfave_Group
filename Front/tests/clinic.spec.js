@@ -1,16 +1,74 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
-test('public pages work on desktop and mobile', async ({ page }) => {
+test('public pages preserve the theme and work on desktop and mobile', async ({
+  page,
+  context,
+}) => {
   const errors = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Big love for/ })).toBeVisible()
-  await page.screenshot({ path: 'test-results/landing-desktop.png', fullPage: true })
+  await expect(page.getByRole('heading', { name: /Good care starts/ })).toBeVisible()
+  await page.evaluate(() => document.fonts.ready)
+  await page.screenshot({
+    path: 'test-results/landing-desktop.png',
+    fullPage: true,
+    animations: 'disabled',
+  })
+  const secondTab = await context.newPage()
+  await secondTab.goto('/login')
+  await expect(secondTab.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(secondTab.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await page.screenshot({
+    path: 'test-results/landing-dark.png',
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await page.goto('/login')
+  await expect(page.getByRole('button', { name: 'Switch to light theme' })).toBeVisible()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#111a28')
+  await page.screenshot({
+    path: 'test-results/login-dark.png',
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await page.getByLabel('Password', { exact: true }).fill('ExamplePassword123!')
+  await page.getByRole('button', { name: 'Show password', exact: true }).click()
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'text')
+  await page.getByRole('button', { name: 'Hide password', exact: true }).click()
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'password')
+  await page.getByRole('button', { name: 'Switch to light theme' }).click()
+  await expect(secondTab.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.screenshot({
+    path: 'test-results/login-light.png',
+    fullPage: true,
+    animations: 'disabled',
+  })
+  await secondTab.close()
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.getByRole('link', { name: 'Join the PetFave family' })).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await page.screenshot({ path: 'test-results/landing-mobile.png', fullPage: true })
+  for (const [route, name] of [
+    ['/', 'landing'],
+    ['/login', 'login'],
+    ['/register', 'register'],
+    ['/forgot-password', 'recovery'],
+  ]) {
+    await page.goto(route)
+    await expect(page.locator('h1')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({
+      path: `test-results/${name}-mobile.png`,
+      fullPage: true,
+      animations: 'disabled',
+    })
+  }
+  await page.goto('/')
+  await expect(
+    page.getByRole('link', { name: 'Create your account', exact: true }).first(),
+  ).toBeVisible()
   await page.getByRole('link', { name: 'Sign in', exact: true }).first().click()
   await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
   expect(errors).toEqual([])

@@ -20,7 +20,8 @@ export default defineConfig({
   testDir: './tests',
   workers: 1,
   fullyParallel: false,
-  timeout: 45000,
+  timeout: 90000,
+  expect: { timeout: 12000 },
   reporter: 'list',
   globalSetup: './tests/global-setup.js',
   use: {

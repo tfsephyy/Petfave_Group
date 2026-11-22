@@ -19,13 +19,11 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Moon,
   Package,
   PawPrint,
   Plus,
   Settings,
   ShieldCheck,
-  Sun,
   Users,
   X,
 } from 'lucide-react'
@@ -41,11 +39,13 @@ import Guardians from './pages/Guardians'
 import Appointments from './pages/Appointments'
 import Inventory from './pages/Inventory'
 import { AccountSettings, AuditLog } from './pages/Settings'
+import ThemeToggle from './components/ThemeToggle'
 import './App.css'
 import './design.css'
+import './public.css'
 
 function Workspace() {
-  const { user, loading, staff, setUser, theme, setTheme, notify, now } = useSession()
+  const { user, loading, staff, setUser, notify, now } = useSession()
   const [sidebar, setSidebar] = useState(false)
   const [notifications, setNotifications] = useState(false)
   const location = useLocation()
@@ -159,13 +159,7 @@ function Workspace() {
           </div>
           <div className="topbar-actions">
             <span className="clinic-date">{date(now, { weekday: 'short' })}</span>
-            <button
-              className="icon-button"
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            >
-              {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
-            </button>
+            <ThemeToggle compact />
             <div className="notification-wrap">
               <button
                 className="icon-button notification-button"
@@ -239,8 +233,7 @@ function Guard({ children, admin = false }) {
   return (admin ? user?.role === 'admin' : staff) ? children : <Navigate to="/app" replace />
 }
 function AppRoutes() {
-  const { loading, connectionError, refreshSession } = useSession()
-  if (loading) return <Spinner />
+  const { connectionError, refreshSession } = useSession()
   if (connectionError)
     return (
       <div className="connection-screen">
