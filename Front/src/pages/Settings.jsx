@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KeyRound, Mail, Moon, ShieldCheck, Sun, UserRound } from 'lucide-react'
+import { KeyRound, LogOut, Mail, Moon, ShieldCheck, Sun, UserRound } from 'lucide-react'
 import { useSession } from '../lib/session'
 import { date } from '../lib/api'
 import { useResource } from '../lib/hooks'
 import { SaveForm } from '../components/forms'
+import LogoutButton from '../components/LogoutButton'
 import {
   Badge,
   Empty,
@@ -195,6 +196,16 @@ export function AccountSettings() {
                 Dark
               </button>
             </div>
+          </section>
+          <section className="panel settings-panel">
+            <div className="settings-title">
+              <span className="mini-icon">
+                <LogOut size={21} />
+              </span>
+              <h2>Your session</h2>
+            </div>
+            <p className="muted">Log out when you're finished using this browser.</p>
+            <LogoutButton className="button secondary full settings-logout-button" />
           </section>
           {user.role === 'owner' && (
             <section className="panel settings-panel">

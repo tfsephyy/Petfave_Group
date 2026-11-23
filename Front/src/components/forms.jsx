@@ -184,9 +184,11 @@ export function AnimalForm({ animal, onClose, onSaved }) {
                 placeholder="e.g. Golden, white paws"
               />
             </Field>
-            <Field label="Microchip number (optional)">
-              <input name="microchip" maxLength={40} defaultValue={animal?.microchip || ''} />
-            </Field>
+            {!staff && (
+              <Field label="Microchip number (optional)">
+                <input name="microchip" maxLength={40} defaultValue={animal?.microchip || ''} />
+              </Field>
+            )}
           </div>
           <Field label="Profile notes">
             <textarea

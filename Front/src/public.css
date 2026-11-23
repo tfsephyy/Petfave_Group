@@ -692,6 +692,9 @@
 .auth-compact-card .password-input input {
   padding-right: 48px;
 }
+.auth-compact-card input[type='password']::-ms-reveal {
+  display: none;
+}
 .auth-compact-card .password-input button {
   right: 2px;
   width: 40px;

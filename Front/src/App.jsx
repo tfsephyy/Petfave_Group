@@ -8,7 +8,6 @@ import {
   Route,
   Routes,
   useLocation,
-  useNavigate,
 } from 'react-router-dom'
 import {
   Bell,
@@ -17,7 +16,6 @@ import {
   ClipboardList,
   Heart,
   LayoutDashboard,
-  LogOut,
   Menu,
   Package,
   PawPrint,
@@ -29,7 +27,7 @@ import {
 } from 'lucide-react'
 import { SessionProvider } from './lib/context'
 import { useSession } from './lib/session'
-import { api, date } from './lib/api'
+import { date } from './lib/api'
 import { useResource } from './lib/hooks'
 import { Empty, ErrorBox, Logo, Spinner } from './components/ui'
 import { AuthPage, Landing } from './pages/Auth'
@@ -40,16 +38,16 @@ import Appointments from './pages/Appointments'
 import Inventory from './pages/Inventory'
 import { AccountSettings, AuditLog } from './pages/Settings'
 import ThemeToggle from './components/ThemeToggle'
+import LogoutButton from './components/LogoutButton'
 import './App.css'
 import './design.css'
 import './public.css'
 
 function Workspace() {
-  const { user, loading, staff, setUser, notify, now } = useSession()
+  const { user, loading, staff, now } = useSession()
   const [sidebar, setSidebar] = useState(false)
   const [notifications, setNotifications] = useState(false)
   const location = useLocation()
-  const navigate = useNavigate()
   const alerts = useResource(user ? '/dashboard' : '/session')
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
@@ -66,15 +64,6 @@ function Workspace() {
       path === '/app' ? location.pathname === path : location.pathname.startsWith(path),
     )?.[1] || 'Account settings'
   const due = alerts.data?.due_records || []
-  async function logout() {
-    try {
-      await api('/logout', { method: 'POST' })
-      setUser(null)
-      navigate('/login')
-    } catch (err) {
-      notify(err.message, 'error')
-    }
-  }
   return (
     <div className="workspace">
       {sidebar && (
@@ -84,7 +73,11 @@ function Workspace() {
           onClick={() => setSidebar(false)}
         />
       )}
-      <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
+      <aside
+        className={`sidebar ${sidebar ? 'open' : ''}`}
+        aria-label="Workspace sidebar"
+        tabIndex={0}
+      >
         <Link to="/" className="sidebar-brand">
           <Logo />
         </Link>
@@ -135,9 +128,7 @@ function Workspace() {
           <NavLink to="/app/settings" className="nav-link">
             <Settings size={19} /> Account settings
           </NavLink>
-          <button className="nav-link" onClick={logout}>
-            <LogOut size={18} /> Sign out
-          </button>
+          <LogoutButton className="nav-link" label="Sign out" />
           <div className="sidebar-footer">
             <span className="live-dot" /> Connected with care
           </div>

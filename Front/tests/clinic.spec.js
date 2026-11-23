@@ -110,6 +110,7 @@ test('owner registers, adds a pet, requests a visit, and signs in again', async 
   await page.getByRole('link', { name: 'Account settings', exact: true }).click()
   await expect(page.getByLabel('Full name')).toHaveValue('Browser Pet Parent')
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
   await page.getByLabel('Email address').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
@@ -124,6 +125,48 @@ test('owner registers, adds a pet, requests a visit, and signs in again', async 
   await expect(page.locator('.sidebar')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, -234, 0)')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: 'test-results/owner-mobile.png', fullPage: true })
+})
+
+test('account settings confirms logout and keeps the session on cancel or failure', async ({
+  page,
+}) => {
+  const credentials = JSON.parse(readFileSync('test-results/browser-staff.json', 'utf8'))
+  await page.goto('/login')
+  await page.getByLabel('Email address').fill(credentials.email)
+  await page.getByLabel('Password', { exact: true }).fill(credentials.password)
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page).toHaveURL(/\/app$/)
+  await page.getByRole('link', { name: 'Account settings', exact: true }).click()
+
+  const dialog = page.getByRole('dialog')
+  const logout = page.getByRole('button', { name: 'Log out', exact: true })
+  await logout.click()
+  await expect(dialog.getByRole('heading', { name: 'Log out?', exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page).toHaveURL(/\/app\/settings$/)
+
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  expect((await (await page.request.get('/api/session')).json()).user.email).toBe(credentials.email)
+
+  await page.route('**/api/logout', (route) =>
+    route.fulfill({ status: 503, json: { message: 'Unable to log out. Please try again.' } }),
+  )
+  await logout.click()
+  await dialog.getByRole('button', { name: 'Log out', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Unable to log out. Please try again.')
+  await expect(dialog.getByRole('button', { name: 'Log out', exact: true })).toBeEnabled()
+  expect((await (await page.request.get('/api/session')).json()).user.email).toBe(credentials.email)
+
+  await page.unroute('**/api/logout')
+  await dialog.getByRole('button', { name: 'Log out', exact: true }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  expect((await (await page.request.get('/api/session')).json()).user).toBeNull()
+  await page.goto('/app/settings')
+  await expect(page).toHaveURL(/\/login$/)
 })
 
 test('staff manage contacts, patients, clinical records, visits, and inventory', async ({

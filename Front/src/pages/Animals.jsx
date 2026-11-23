@@ -11,9 +11,11 @@ import {
   Edit3,
   Heart,
   ImagePlus,
+  LayoutGrid,
   Plus,
   RotateCcw,
   ShieldCheck,
+  Table2,
   Trash2,
 } from 'lucide-react'
 import { api, date } from '../lib/api'
@@ -41,6 +43,7 @@ export function Animals() {
   const [page, setPage] = useState(1)
   const [archived, setArchived] = useState(false)
   const [sort, setSort] = useState('created_at')
+  const [view, setView] = useState('card')
   const [edit, setEdit] = useState(params.get('new') ? {} : null)
   const [confirm, setConfirm] = useState(null)
   const query = useDebounce(search)
@@ -116,6 +119,26 @@ export function Animals() {
               <option value="created_at">Newest first</option>
               <option value="name">Name A–Z</option>
             </select>
+            {staff && (
+              <div className="segmented" role="group" aria-label="Patient view">
+                <button
+                  type="button"
+                  className={view === 'card' ? 'selected' : ''}
+                  aria-pressed={view === 'card'}
+                  onClick={() => setView('card')}
+                >
+                  <LayoutGrid size={16} /> Card view
+                </button>
+                <button
+                  type="button"
+                  className={view === 'table' ? 'selected' : ''}
+                  aria-pressed={view === 'table'}
+                  onClick={() => setView('table')}
+                >
+                  <Table2 size={16} /> Table view
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <ErrorBox error={error} retry={reload} />
@@ -123,53 +146,57 @@ export function Animals() {
           <Spinner />
         ) : data?.data?.length ? (
           <>
-            <div className="pet-grid">
-              {data.data.map((p) => (
-                <article className="pet-card" key={p.id}>
-                  <div className="pet-card-top">
-                    <PetAvatar animal={p} size="large" />
-                    <Badge tone={p.archived_at ? 'cancelled' : 'active'}>
-                      {p.archived_at ? 'Archived' : 'Active'}
-                    </Badge>
-                  </div>
-                  <Link to={`/app/pets/${p.id}`}>
-                    <h2>{p.name}</h2>
-                    <p>
-                      {p.breed?.name || 'Unspecified breed'} <span>·</span> {p.species?.name}
-                    </p>
-                  </Link>
-                  <div className="pet-card-details">
-                    <span>
-                      Pet parent<strong>{p.guardian?.name}</strong>
-                    </span>
-                    <span>
-                      Sex<strong>{p.sex}</strong>
-                    </span>
-                    <span>
-                      Weight<strong>{p.weight_kg ? `${p.weight_kg} kg` : 'Not recorded'}</strong>
-                    </span>
-                    <span>
-                      Born<strong>{date(p.birth_date)}</strong>
-                    </span>
-                  </div>
-                  <div className="pet-card-bottom">
-                    <Link className="text-button" to={`/app/pets/${p.id}`}>
-                      Meet {p.name}
-                      <ArrowRight size={15} />
+            {staff && view === 'table' ? (
+              <PatientTable animals={data.data} archived={archived} onArchive={setConfirm} />
+            ) : (
+              <div className={`pet-grid${staff ? ' patient-grid' : ''}`}>
+                {data.data.map((p) => (
+                  <article className="pet-card" key={p.id}>
+                    <div className="pet-card-top">
+                      <PetAvatar animal={p} size="large" />
+                      <Badge tone={p.archived_at ? 'cancelled' : 'active'}>
+                        {p.archived_at ? 'Archived' : 'Active'}
+                      </Badge>
+                    </div>
+                    <Link to={`/app/pets/${p.id}`}>
+                      <h2>{p.name}</h2>
+                      <p>
+                        {p.breed?.name || 'Unspecified breed'} <span>·</span> {p.species?.name}
+                      </p>
                     </Link>
-                    {staff && (
-                      <button
-                        className="icon-button"
-                        aria-label={`${archived ? 'Restore' : 'Archive'} ${p.name}`}
-                        onClick={() => setConfirm(p)}
-                      >
-                        {archived ? <RotateCcw size={17} /> : <Archive size={17} />}
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
+                    <div className="pet-card-details">
+                      <span>
+                        Pet parent<strong>{p.guardian?.name}</strong>
+                      </span>
+                      <span>
+                        Sex<strong>{p.sex}</strong>
+                      </span>
+                      <span>
+                        Weight<strong>{p.weight_kg ? `${p.weight_kg} kg` : 'Not recorded'}</strong>
+                      </span>
+                      <span>
+                        Born<strong>{date(p.birth_date)}</strong>
+                      </span>
+                    </div>
+                    <div className="pet-card-bottom">
+                      <Link className="text-button" to={`/app/pets/${p.id}`}>
+                        Meet {p.name}
+                        <ArrowRight size={15} />
+                      </Link>
+                      {staff && (
+                        <button
+                          className="icon-button"
+                          aria-label={`${archived ? 'Restore' : 'Archive'} ${p.name}`}
+                          onClick={() => setConfirm(p)}
+                        >
+                          {archived ? <RotateCcw size={17} /> : <Archive size={17} />}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
             <Pagination meta={data} onPage={setPage} />
           </>
         ) : (
@@ -228,6 +255,71 @@ export function Animals() {
         />
       )}
     </>
+  )
+}
+
+function PatientTable({ animals, archived, onArchive }) {
+  return (
+    <div className="table-wrap" role="region" aria-label="Patients table" tabIndex={0}>
+      <table className="patient-table" aria-label="Patients">
+        <thead>
+          <tr>
+            <th scope="col">Patient</th>
+            <th scope="col">Pet parent</th>
+            <th scope="col">Sex</th>
+            <th scope="col">Weight</th>
+            <th scope="col">Born</th>
+            <th scope="col">Status</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {animals.map((animal) => (
+            <tr key={animal.id}>
+              <td>
+                <Link className="table-person" to={`/app/pets/${animal.id}`}>
+                  <PetAvatar animal={animal} />
+                  <span>
+                    <strong>{animal.name}</strong>
+                    <small>
+                      {animal.breed?.name || 'Unspecified breed'} · {animal.species?.name}
+                    </small>
+                  </span>
+                </Link>
+              </td>
+              <td>{animal.guardian?.name || 'Not recorded'}</td>
+              <td>{animal.sex}</td>
+              <td>{animal.weight_kg ? `${animal.weight_kg} kg` : 'Not recorded'}</td>
+              <td>{date(animal.birth_date)}</td>
+              <td>
+                <Badge tone={animal.archived_at ? 'cancelled' : 'active'}>
+                  {animal.archived_at ? 'Archived' : 'Active'}
+                </Badge>
+              </td>
+              <td>
+                <div className="row-actions">
+                  <Link
+                    className="icon-button"
+                    to={`/app/pets/${animal.id}`}
+                    aria-label={`View ${animal.name}`}
+                  >
+                    <ArrowRight size={17} />
+                  </Link>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`${archived ? 'Restore' : 'Archive'} ${animal.name}`}
+                    onClick={() => onArchive(animal)}
+                  >
+                    {archived ? <RotateCcw size={17} /> : <Archive size={17} />}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -331,10 +423,12 @@ export function AnimalDetail() {
                 <dt>Species</dt>
                 <dd>{p.species?.name}</dd>
               </div>
-              <div>
-                <dt>Microchip</dt>
-                <dd>{p.microchip || 'Not recorded'}</dd>
-              </div>
+              {!staff && (
+                <div>
+                  <dt>Microchip</dt>
+                  <dd>{p.microchip || 'Not recorded'}</dd>
+                </div>
+              )}
               <div>
                 <dt>Color / markings</dt>
                 <dd>{p.color || 'Not recorded'}</dd>

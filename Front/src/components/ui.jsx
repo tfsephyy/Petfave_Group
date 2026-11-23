@@ -168,7 +168,10 @@ export function Modal({ title, subtitle, children, onClose, wide = false }) {
     <dialog
       ref={ref}
       className={`modal ${wide ? 'wide' : ''}`}
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -186,16 +189,27 @@ export function Modal({ title, subtitle, children, onClose, wide = false }) {
     </dialog>
   )
 }
-export function Confirm({ title, message, onConfirm, onClose, label = 'Confirm' }) {
+export function Confirm({
+  title,
+  message,
+  onConfirm,
+  onClose,
+  label = 'Confirm',
+  cancelLabel = 'Keep record',
+  busyLabel = 'Saving…',
+}) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const close = () => {
+    if (!busy) onClose()
+  }
   return (
-    <Modal title={title} onClose={onClose}>
+    <Modal title={title} onClose={close}>
       <p className="muted">{message}</p>
       <FormError error={error} />
       <div className="form-actions">
-        <button className="button secondary" onClick={onClose}>
-          Keep record
+        <button className="button secondary" disabled={busy} onClick={close}>
+          {cancelLabel}
         </button>
         <button
           className="button danger"
@@ -212,7 +226,7 @@ export function Confirm({ title, message, onConfirm, onClose, label = 'Confirm' 
             }
           }}
         >
-          {busy ? 'Saving…' : label}
+          {busy ? busyLabel : label}
         </button>
       </div>
     </Modal>
