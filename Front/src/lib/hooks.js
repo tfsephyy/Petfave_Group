@@ -5,6 +5,7 @@ export function useResource(path) {
   const [result, setResult] = useState({ path: null, version: -1, data: null, error: null })
   const [version, setVersion] = useState(0)
   useEffect(() => {
+    if (!path) return
     const controller = new AbortController()
     api(path, { signal: controller.signal })
       .then((data) => setResult({ path, version, data, error: null }))
@@ -14,9 +15,9 @@ export function useResource(path) {
     return () => controller.abort()
   }, [path, version])
   return {
-    data: result.data,
-    error: result.error,
-    loading: result.path !== path || result.version !== version,
+    data: path ? result.data : null,
+    error: path ? result.error : null,
+    loading: Boolean(path) && (result.path !== path || result.version !== version),
     reload: () => setVersion((v) => v + 1),
   }
 }

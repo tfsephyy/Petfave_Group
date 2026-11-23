@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaveBookingRequest;
 use App\Models\Animal;
 use App\Models\Booking;
+use App\Services\BookingSchedule;
 use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,8 +27,21 @@ class BookingController extends Controller
         return response()->json($this->listing($request, $query, ['starts_at', 'created_at', 'status'], 'starts_at'));
     }
 
-    public function availability(Request $request): JsonResponse
+    public function availability(Request $request, BookingSchedule $schedule): JsonResponse
     {
+        if ($request->has('date')) {
+            $data = $request->validate([
+                'date' => ['required', 'date_format:Y-m-d'],
+                'booking_id' => ['nullable', 'ulid', 'exists:pf_bookings,id'],
+            ]);
+            $booking = isset($data['booking_id']) ? Booking::findOrFail($data['booking_id']) : null;
+            if ($booking) {
+                $this->authorize('update', $booking);
+            }
+
+            return response()->json(['data' => $schedule->availableSlots($data['date'], $booking)]);
+        }
+
         $data = $request->validate([
             'from' => ['required', 'date'], 'to' => ['required', 'date', 'after:from', 'before_or_equal:'.now()->addYear()->toIso8601String()],
             'resource_id' => ['required', 'ulid', 'exists:pf_booking_resources,id'],

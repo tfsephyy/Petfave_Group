@@ -82,7 +82,7 @@ test('owner registers, adds a pet, requests a visit, and signs in again', async 
   await page.getByLabel('Email address').fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByLabel('Confirm password').fill(password)
-  await page.getByRole('button', { name: 'Create your account' }).click()
+  await page.getByRole('button', { name: 'Create account', exact: true }).click()
   await expect(page).toHaveURL(/\/app$/)
   await expect(page.getByRole('link', { name: 'My pets', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Pet parents', exact: true })).toHaveCount(0)
@@ -99,10 +99,30 @@ test('owner registers, adds a pet, requests a visit, and signs in again', async 
   await expect(page.getByRole('heading', { name: 'A little about Browser Mochi' })).toBeVisible()
   await page.getByRole('link', { name: 'Plan their next visit' }).last().click()
   await expect(dialog).toBeVisible()
-  await dialog.getByLabel('Care team', { exact: true }).selectOption({ label: 'Primary care team' })
-  const day = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10)
-  await dialog.getByLabel('Starts at').fill(`${day}T10:00`)
-  await dialog.getByLabel('Ends at').fill(`${day}T10:30`)
+  const future = new Date(Date.now() + 86400000 * 3)
+  if (future.getUTCDay() === 0) future.setUTCDate(future.getUTCDate() + 1)
+  const day = future.toISOString().slice(0, 10)
+  const dateLabel = new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${day}T00:00:00+08:00`))
+  if (
+    day.slice(0, 7) !==
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit' })
+      .format(new Date())
+      .slice(0, 7)
+  ) {
+    const target = dialog.getByRole('button', { name: dateLabel, exact: true })
+    if ((await target.count()) === 0 || (await target.isDisabled())) {
+      await dialog.getByRole('button', { name: 'Next month', exact: true }).click()
+    }
+  }
+  await dialog.getByRole('button', { name: dateLabel, exact: true }).click()
+  await expect(dialog.getByRole('radio').first()).toBeVisible()
+  await dialog.locator('.booking-time-option').first().click()
   await dialog.getByRole('button', { name: 'Request appointment' }).click()
   await expect(dialog).not.toBeVisible()
   await page.getByRole('button', { name: 'List view' }).click()

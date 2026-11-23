@@ -12,6 +12,8 @@ export function SaveForm({
   children,
   label = 'Save changes',
   transform,
+  disabled = false,
+  onError,
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -27,6 +29,7 @@ export function SaveForm({
           await onSaved(data)
         } catch (err) {
           setError(err)
+          onError?.(err)
         } finally {
           setBusy(false)
         }
@@ -38,7 +41,7 @@ export function SaveForm({
         <button type="button" className="button secondary" onClick={onClose}>
           Cancel
         </button>
-        <button className="button" disabled={busy}>
+        <button className="button" disabled={busy || disabled}>
           {busy ? 'Saving…' : label}
         </button>
       </div>

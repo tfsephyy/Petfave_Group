@@ -13,9 +13,13 @@ class BookingService
 {
     public function save(array $data, User $actor, ?Booking $booking = null): Booking
     {
-        return DB::transaction(function () use ($data, $actor, $booking) {
-            $resources = array_unique(array_filter([$data['resource_id'], $booking?->resource_id]));
-            sort($resources);
+        app(BookingSchedule::class)->validate($data['starts_at'], $data['ends_at']);
+        $resources = isset($data['resource_id'])
+            ? array_unique(array_filter([$data['resource_id'], $booking?->resource_id]))
+            : BookingResource::orderBy('id')->pluck('id')->all();
+        sort($resources);
+
+        return DB::transaction(function () use ($data, $actor, $booking, $resources) {
             foreach ($resources as $id) {
                 BookingResource::whereKey($id)->increment('lock_version');
             }
@@ -30,13 +34,25 @@ class BookingService
             }
             $data['starts_at'] = Carbon::parse($data['starts_at'])->utc();
             $data['ends_at'] = Carbon::parse($data['ends_at'])->utc();
-            $conflict = Booking::where('resource_id', $data['resource_id'])
-                ->whereIn('status', ['pending', 'confirmed'])
-                ->when($booking, fn ($q) => $q->whereKeyNot($booking->id))
-                ->where('starts_at', '<', $data['ends_at'])->where('ends_at', '>', $data['starts_at'])->exists();
-            if ($conflict) {
-                throw ValidationException::withMessages(['starts_at' => 'That time has just been booked. Please choose another time or care team.']);
+            $candidates = isset($data['resource_id']) ? [$data['resource_id']] : $resources;
+            if ($booking && ! isset($data['resource_id'])) {
+                $candidates = array_unique([$booking->resource_id, ...$candidates]);
             }
+            $resourceId = null;
+            foreach ($candidates as $candidate) {
+                $conflict = Booking::where('resource_id', $candidate)
+                    ->whereIn('status', ['pending', 'confirmed'])
+                    ->when($booking, fn ($q) => $q->whereKeyNot($booking->id))
+                    ->where('starts_at', '<', $data['ends_at'])->where('ends_at', '>', $data['starts_at'])->exists();
+                if (! $conflict) {
+                    $resourceId = $candidate;
+                    break;
+                }
+            }
+            if ($resourceId === null) {
+                throw ValidationException::withMessages(['starts_at' => 'That time is no longer available. Please choose another appointment time.']);
+            }
+            $data['resource_id'] = $resourceId;
             $data['status'] = $booking && $actor->isStaff() ? $booking->status : 'pending';
             if ($booking) {
                 $before = $booking->only(array_keys($data));

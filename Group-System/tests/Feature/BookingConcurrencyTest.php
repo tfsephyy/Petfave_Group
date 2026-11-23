@@ -26,9 +26,13 @@ class BookingConcurrencyTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin']);
             $pet = Animal::factory()->create();
             $resource = BookingResource::create(['name' => 'Concurrent care team']);
+            $start = now('Asia/Manila')->addDay()->setTime(10, 0);
+            if ($start->isSunday()) {
+                $start->addDay();
+            }
             $booking = ['kind' => 'booking', 'actor_id' => $admin->id, 'data' => [
-                'animal_id' => $pet->id, 'resource_id' => $resource->id, 'service' => 'Consultation',
-                'starts_at' => now()->addDay()->toIso8601String(), 'ends_at' => now()->addDay()->addMinutes(30)->toIso8601String(),
+                'animal_id' => $pet->id, 'service' => 'Consultation',
+                'starts_at' => $start->toIso8601String(), 'ends_at' => $start->copy()->addMinutes(15)->toIso8601String(),
             ]];
             $this->assertSame([201, 422], $this->race($database, $booking, $files));
             $this->assertSame(1, Booking::count());
@@ -69,9 +73,13 @@ class BookingConcurrencyTest extends TestCase
             $admin = User::factory()->create(['role' => 'admin']);
             $pet = Animal::factory()->create();
             $resource = BookingResource::create(['name' => 'Concurrent MySQL care team']);
+            $start = now('Asia/Manila')->addDay()->setTime(10, 0);
+            if ($start->isSunday()) {
+                $start->addDay();
+            }
             $booking = ['kind' => 'booking', 'actor_id' => $admin->id, 'data' => [
                 'animal_id' => $pet->id, 'resource_id' => $resource->id, 'service' => 'Consultation',
-                'starts_at' => now()->addDay()->toIso8601String(), 'ends_at' => now()->addDay()->addMinutes(30)->toIso8601String(),
+                'starts_at' => $start->toIso8601String(), 'ends_at' => $start->copy()->addMinutes(15)->toIso8601String(),
             ]];
             $this->assertSame([201, 422], $this->race($database, $booking, $files, 'mysql'));
             $this->assertSame(1, Booking::count());

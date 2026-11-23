@@ -43,12 +43,17 @@ class ClinicWorkflowTest extends TestCase
 
     private function bookingData(Animal $pet): array
     {
+        $start = now('Asia/Manila')->addDays(2)->setTime(10, 0);
+        if ($start->isSunday()) {
+            $start->addDay();
+        }
+
         return [
             'animal_id' => $pet->id,
             'resource_id' => BookingResource::firstOrCreate(['name' => 'Primary team'])->id,
             'service' => 'Consultation',
-            'starts_at' => now()->addDays(2)->startOfHour()->toIso8601String(),
-            'ends_at' => now()->addDays(2)->startOfHour()->addMinutes(30)->toIso8601String(),
+            'starts_at' => $start->toIso8601String(),
+            'ends_at' => $start->copy()->addMinutes(15)->toIso8601String(),
         ];
     }
 
@@ -178,7 +183,7 @@ class ClinicWorkflowTest extends TestCase
         $data = $this->bookingData($pet);
         $this->actingAs($owner)->postJson('/api/bookings', $data)->assertCreated();
         $this->postJson('/api/bookings', $data)->assertUnprocessable()->assertJsonValidationErrors('starts_at');
-        $adjacent = array_replace($data, ['starts_at' => $data['ends_at'], 'ends_at' => now()->addDays(2)->startOfHour()->addHour()->toIso8601String()]);
+        $adjacent = array_replace($data, ['starts_at' => $data['ends_at'], 'ends_at' => Carbon::parse($data['ends_at'])->addMinutes(15)->toIso8601String()]);
         $this->postJson('/api/bookings', $adjacent)->assertCreated();
         $resource = BookingResource::create(['name' => 'Second team']);
         $this->postJson('/api/bookings', array_replace($data, ['resource_id' => $resource->id]))->assertCreated();
@@ -213,8 +218,8 @@ class ClinicWorkflowTest extends TestCase
     {
         $owner = $this->owner();
         $data = $this->bookingData($this->pet($owner));
-        $day = today('Asia/Manila')->addDays(2)->toDateString();
-        $data = array_replace($data, ['starts_at' => $day.'T10:00:00+08:00', 'ends_at' => $day.'T10:30:00+08:00']);
+        $day = Carbon::parse($data['starts_at'])->toDateString();
+        $data = array_replace($data, ['starts_at' => $day.'T10:00:00+08:00', 'ends_at' => $day.'T10:15:00+08:00']);
         $id = $this->actingAs($owner)->postJson('/api/bookings', $data)->assertCreated()->assertJsonPath('status', 'pending')->json('id');
         $this->assertDatabaseHas('pf_bookings', ['id' => $id, 'starts_at' => $day.' 02:00:00']);
         $this->patchJson('/api/bookings/'.$id.'/status', ['status' => 'confirmed'])->assertForbidden();

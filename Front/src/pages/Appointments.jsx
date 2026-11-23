@@ -11,10 +11,11 @@ import {
   Plus,
   X,
 } from 'lucide-react'
-import { api, date, localInput, time, utcInput } from '../lib/api'
+import { date, localInput, time } from '../lib/api'
 import { useSession } from '../lib/session'
 import { useResource } from '../lib/hooks'
 import { SaveForm } from '../components/forms'
+import BookingDatePicker from '../components/BookingDatePicker'
 import {
   Badge,
   Empty,
@@ -401,31 +402,22 @@ export default function Appointments() {
 }
 
 function BookingForm({ booking, initialPet, onClose, onSaved }) {
-  const { notify } = useSession()
+  const { notify, now } = useSession()
   const options = useResource('/options')
-  const [resource, setResource] = useState(booking?.resource_id || '')
-  const [start, setStart] = useState(localInput(booking?.starts_at))
-  const [end, setEnd] = useState(localInput(booking?.ends_at))
-  const [busyTimes, setBusyTimes] = useState(null),
-    [availabilityError, setAvailabilityError] = useState(null)
-  async function checkAvailability() {
-    setAvailabilityError(null)
-    setBusyTimes(null)
-    if (!resource || !start) {
-      setAvailabilityError('Choose a care team and start date first.')
-      return
-    }
-    const from = utcInput(`${start.slice(0, 10)}T00:00`)
-    const to = new Date(new Date(from).getTime() + 86400000).toISOString()
-    try {
-      const data = await api(
-        `/availability?resource_id=${resource}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      )
-      setBusyTimes(data.data)
-    } catch (err) {
-      setAvailabilityError(err)
-    }
-  }
+  const [chosenDate, setChosenDate] = useState(localInput(booking?.starts_at).slice(0, 10))
+  const [chosenTime, setChosenTime] = useState(localInput(booking?.starts_at))
+  const today = dayKey(now)
+  const validDate = chosenDate >= today && new Date(`${chosenDate}T00:00:00Z`).getUTCDay() !== 0
+  const availability = useResource(
+    validDate
+      ? `/availability?date=${chosenDate}${booking ? `&booking_id=${booking.id}` : ''}`
+      : null,
+  )
+  const slots =
+    !availability.loading && !availability.error
+      ? (availability.data?.data || []).filter((slot) => new Date(slot.starts_at) > now)
+      : []
+  const selectedSlot = slots.find((slot) => localInput(slot.starts_at) === chosenTime)
   return (
     <Modal
       title={booking ? 'Make a little change of plans' : 'Plan a little time for care'}
@@ -443,14 +435,21 @@ function BookingForm({ booking, initialPet, onClose, onSaved }) {
           method={booking ? 'PUT' : 'POST'}
           onClose={onClose}
           label={booking ? 'Save new time' : 'Request appointment'}
+          disabled={!selectedSlot}
+          onError={(error) => {
+            if (error.errors?.starts_at) {
+              setChosenTime('')
+              availability.reload()
+            }
+          }}
           onSaved={() => {
             notify(booking ? 'Appointment rescheduled.' : 'Your visit request is on its way.')
             onSaved()
           }}
           transform={(v) => ({
             ...v,
-            starts_at: utcInput(v.starts_at),
-            ends_at: utcInput(v.ends_at),
+            starts_at: selectedSlot?.starts_at,
+            ends_at: selectedSlot?.ends_at,
           })}
         >
           <div className="form-grid">
@@ -481,68 +480,68 @@ function BookingForm({ booking, initialPet, onClose, onSaved }) {
                 ))}
               </select>
             </Field>
-            <Field label="Care team">
-              <select
-                name="resource_id"
-                value={resource}
-                onChange={(e) => {
-                  setResource(e.target.value)
-                  setBusyTimes(null)
-                }}
-                required
-              >
-                <option value="">Select a care team</option>
-                {options.data.resources.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <div className="field">
-              <span>Time zone</span>
-              <div className="timezone-field">
-                <Clock3 size={16} /> Philippine time · UTC+08:00
-              </div>
-            </div>
-            <Field label="Starts at">
-              <input
-                name="starts_at"
-                type="datetime-local"
-                value={start}
-                onChange={(e) => {
-                  setStart(e.target.value)
-                  setBusyTimes(null)
-                  if (!end && e.target.value)
-                    setEnd(
-                      localInput(new Date(new Date(utcInput(e.target.value)).getTime() + 1800000)),
-                    )
-                }}
-                required
-              />
-            </Field>
-            <Field label="Ends at">
-              <input
-                name="ends_at"
-                type="datetime-local"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                required
-              />
-            </Field>
           </div>
-          <div className="availability">
-            <button type="button" className="text-button" onClick={checkAvailability}>
-              <CalendarDays size={16} /> Check this day’s availability
-            </button>
-            <ErrorBox error={availabilityError} />
-            {busyTimes && (
-              <p>
-                {busyTimes.length
-                  ? `Reserved times: ${busyTimes.map((b) => `${time(b.starts_at)}–${time(b.ends_at)}`).join(', ')}`
-                  : 'No reserved times for this team on this day.'}
-              </p>
-            )}
+          <div className="booking-schedule-grid">
+            <BookingDatePicker
+              value={chosenDate}
+              today={today}
+              onChange={(day) => {
+                setChosenDate(day)
+                setChosenTime('')
+              }}
+            />
+            <fieldset className="booking-time-picker">
+              <legend>Choose time</legend>
+              {!validDate ? (
+                <p className="muted">Choose a date to see available times.</p>
+              ) : availability.loading ? (
+                <p className="muted" role="status">
+                  Loading available times…
+                </p>
+              ) : availability.error ? (
+                <ErrorBox error={availability.error} retry={availability.reload} />
+              ) : slots.length ? (
+                <>
+                  <p className="muted">Each appointment is 15 minutes.</p>
+                  {[
+                    ['Morning · 8 AM–12 noon', true],
+                    ['Afternoon · 1–4:30 PM', false],
+                  ].map(([label, morning]) => {
+                    const times = slots.filter(
+                      (slot) => Number(localInput(slot.starts_at).slice(11, 13)) < 12 === morning,
+                    )
+                    return (
+                      <div className="booking-time-group" key={label}>
+                        <h3>{label}</h3>
+                        {times.length ? (
+                          <div className="booking-time-grid">
+                            {times.map((slot) => (
+                              <label className="booking-time-option" key={slot.starts_at}>
+                                <input
+                                  type="radio"
+                                  name="appointment_time"
+                                  value={slot.starts_at}
+                                  required
+                                  checked={chosenTime === localInput(slot.starts_at)}
+                                  onChange={() => setChosenTime(localInput(slot.starts_at))}
+                                />
+                                <span>{time(slot.starts_at)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="muted">No times available.</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </>
+              ) : (
+                <p className="muted" role="status">
+                  No times available on this date. Please choose another date.
+                </p>
+              )}
+            </fieldset>
           </div>
           <Field label="Anything we should know?">
             <textarea
