@@ -584,16 +584,16 @@
 /* -- Compact Auth (login / register / forgot / reset) -- */
 .auth-shell-compact {
   background: var(--bg);
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 .auth-compact-header {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 14px 32px;
+  padding: 16px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -624,53 +624,53 @@
   color: var(--accent);
 }
 .auth-compact-stage {
-  flex: 1;
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 48px;
-  max-width: 1020px;
+  gap: clamp(32px, 5vw, 64px);
+  max-width: 1080px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 32px;
-  min-height: 0;
+  padding: clamp(16px, 3dvh, 32px) 32px;
 }
 .auth-compact-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  padding: 24px 26px 20px;
-  border-radius: 14px;
-  box-shadow: 0 4px 24px #1a305b06;
+  padding: 28px;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
   width: 100%;
-  max-width: 430px;
+  max-width: 440px;
+  min-width: 0;
   justify-self: end;
 }
 .auth-compact-card-top {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .auth-compact-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   color: var(--accent);
   background: var(--accent-soft);
   flex-shrink: 0;
 }
 .auth-compact-card h1 {
-  font-size: 21px;
+  font-size: 26px;
   letter-spacing: -0.5px;
   font-weight: 650;
   line-height: 1.3;
 }
 .auth-compact-sub {
-  font-size: 11.5px;
+  font-size: 13px;
   color: var(--muted);
-  margin-top: 2px;
+  margin-top: 4px;
   line-height: 1.5;
 }
 .auth-compact-card .field {
@@ -678,20 +678,30 @@
   gap: 5px;
 }
 .auth-compact-card .field > label {
-  font-size: 11.5px;
-  font-weight: 550;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .auth-compact-card .field input {
-  min-height: 38px;
-  padding: 8px 11px;
-  font-size: 13px;
-  border-radius: 7px;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  line-height: 1.4;
+  border-radius: 9px;
 }
 .auth-compact-card .password-input input {
-  padding-right: 38px;
+  padding-right: 48px;
+}
+.auth-compact-card .password-input button {
+  right: 2px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
 }
 .auth-compact-card .field > small {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .auth-compact-card .auth-form-options {
@@ -699,24 +709,26 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 11px;
-  margin: 0 0 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin: 0 0 16px;
 }
 .auth-compact-card .auth-form-options > span {
   display: flex;
   align-items: center;
   gap: 4px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .auth-compact-card .auth-form-options > a {
   color: var(--accent);
   font-weight: 500;
 }
 .auth-compact-card .auth-submit {
-  font-size: 13px;
-  padding: 9px 14px;
-  min-height: 40px;
+  font-size: 14px;
+  padding: 11px 16px;
+  min-height: 44px;
+  border-radius: 9px;
   gap: 9px;
 }
 .auth-compact-card .auth-switch-row {
@@ -726,8 +738,12 @@
   flex-wrap: wrap;
   gap: 5px;
   color: var(--muted);
-  font-size: 11px;
-  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 18px;
+}
+.auth-compact-card .error-box {
+  overflow-wrap: anywhere;
 }
 .auth-compact-card .auth-switch-row > a {
   display: inline-flex;
@@ -742,11 +758,12 @@
   flex-direction: column;
   gap: 18px;
   max-width: 400px;
+  min-width: 0;
 }
 .auth-info-photo {
   position: relative;
-  height: 180px;
-  border-radius: 14px;
+  height: clamp(160px, 26dvh, 260px);
+  border-radius: 18px;
   overflow: hidden;
   background: var(--cream);
 }
@@ -758,7 +775,7 @@
   object-position: 50% 10%;
 }
 .auth-info-copy h2 {
-  font-size: 26px;
+  font-size: clamp(26px, 2.5vw, 32px);
   line-height: 1.25;
   font-weight: 600;
   letter-spacing: -1px;
@@ -767,11 +784,11 @@
   color: var(--accent);
 }
 .auth-info-copy p {
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.7;
   margin-top: 8px;
-  max-width: 320px;
+  max-width: 360px;
 }
 .auth-info-checks {
   display: flex;
@@ -782,7 +799,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 .auth-info-checks svg {
@@ -799,7 +816,7 @@
   margin: 0 auto;
   padding: 12px 32px;
   border-top: 1px solid var(--border);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   flex-shrink: 0;
 }
@@ -1335,24 +1352,24 @@
   }
 }
 
-
 /* -- Auth responsive -- */
 @media (max-width: 900px) {
   .auth-compact-info {
     display: none;
   }
   .auth-compact-stage {
-    display: flex;
+    grid-template-columns: minmax(0, 440px);
     justify-content: center;
-    padding: 0 20px;
+    gap: 0;
+    padding-inline: 24px;
   }
   .auth-compact-card {
-    max-width: 440px;
+    justify-self: center;
   }
 }
 @media (max-width: 480px) {
   .auth-compact-header {
-    padding: 12px 16px;
+    padding: 12px 20px;
   }
   .auth-compact-header .brand {
     font-size: 19px;
@@ -1363,37 +1380,78 @@
     border-radius: 7px;
   }
   .auth-compact-stage {
-    padding: 0 14px;
+    padding: 16px;
   }
   .auth-compact-card {
-    padding: 20px 18px 18px;
-    border-radius: 12px;
+    padding: 24px 20px;
+    border-radius: 16px;
   }
   .auth-compact-card h1 {
-    font-size: 19px;
+    font-size: 23px;
   }
   .auth-compact-sub {
-    font-size: 11px;
+    font-size: 12px;
   }
   .auth-compact-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-  }
-  .auth-compact-card .field input {
-    min-height: 38px;
-    padding: 8px 10px;
-    font-size: 14px;
-  }
-  .auth-compact-card .auth-submit {
-    min-height: 38px;
-    font-size: 13px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
   .auth-compact-footer {
-    padding: 10px 16px;
-    font-size: 9px;
+    padding: 10px 20px;
+    font-size: 10px;
   }
   .auth-home-link {
     display: none;
+  }
+}
+
+@media (max-height: 760px) {
+  .auth-compact-header {
+    padding-block: 10px;
+  }
+  .auth-compact-stage {
+    padding-block: 12px;
+  }
+  .auth-compact-card {
+    padding-block: 20px;
+  }
+  .auth-compact-card-top {
+    margin-bottom: 14px;
+  }
+  .auth-compact-card .field {
+    margin-bottom: 10px;
+  }
+  .auth-compact-card .auth-switch-row {
+    margin-top: 14px;
+  }
+  .auth-compact-info {
+    gap: 14px;
+  }
+  .auth-compact-footer {
+    padding-block: 10px;
+  }
+}
+
+@media (max-height: 640px) {
+  .auth-compact-header,
+  .auth-compact-footer {
+    padding-block: 6px;
+  }
+  .auth-compact-stage {
+    padding-block: 8px;
+  }
+  .auth-compact-card {
+    padding-block: 16px;
+  }
+  .auth-compact-card-top {
+    margin-bottom: 12px;
+  }
+  .auth-compact-card .field {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .auth-compact-card .auth-switch-row {
+    margin-top: 10px;
   }
 }
