@@ -6,10 +6,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ClinicalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Middleware\AccountAccess;
 use App\Http\Middleware\ActiveAccount;
 use Illuminate\Support\Facades\Route;
 
@@ -21,7 +23,7 @@ Route::prefix('api')->group(function () {
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:public-auth');
         Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:public-auth');
     });
-    Route::middleware(['auth', ActiveAccount::class, 'throttle:clinic'])->group(function () {
+    Route::middleware(['auth', ActiveAccount::class, AccountAccess::class, 'throttle:clinic'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/dashboard', [DashboardController::class, 'index']);
         Route::get('/options', [AnimalController::class, 'options']);
@@ -47,6 +49,13 @@ Route::prefix('api')->group(function () {
         Route::put('/settings/profile', [SettingsController::class, 'profile']);
         Route::put('/settings/password', [SettingsController::class, 'password']);
         Route::delete('/settings/account', [SettingsController::class, 'closeAccount']);
+        Route::middleware('can:admin')->prefix('employees')->group(function () {
+            Route::get('/', [EmployeeController::class, 'index']);
+            Route::post('/', [EmployeeController::class, 'store']);
+            Route::put('/{employee}', [EmployeeController::class, 'update']);
+            Route::patch('/{employee}/status', [EmployeeController::class, 'status']);
+            Route::post('/{employee}/reset-password', [EmployeeController::class, 'resetPassword']);
+        });
         Route::middleware('can:staff')->group(function () {
             Route::post('/archive-batch', ArchiveBatchController::class);
             Route::get('/guardians', [GuardianController::class, 'index']);

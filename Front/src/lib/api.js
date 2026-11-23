@@ -25,6 +25,9 @@ export async function api(path, { method = 'GET', body, ...options } = {}) {
   if (data.csrf_token) csrfToken = data.csrf_token
   if (!response.ok) {
     if (response.status === 401) window.dispatchEvent(new Event('petfave:expired'))
+    if (response.status === 423 && data.code === 'password_change_required') {
+      window.dispatchEvent(new Event('petfave:password-required'))
+    }
     throw new ApiError(
       data.message || 'The request could not be completed. Please try again.',
       response.status,

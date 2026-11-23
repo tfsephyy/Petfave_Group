@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
@@ -40,7 +42,7 @@ class SettingsController extends Controller
             'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+().\s-]+$/'],
             'address' => ['nullable', 'string', 'max:500'],
             'current_password' => ['bail', $request->input('email') !== $user->email ? 'required' : 'nullable', 'string', 'max:128', 'current_password'],
-            'role' => ['prohibited'], 'account_id' => ['prohibited'],
+            'role' => ['prohibited'], 'account_id' => ['prohibited'], 'must_change_password' => ['prohibited'], 'session_version' => ['prohibited'], 'disabled_at' => ['prohibited'], 'created_by' => ['prohibited'],
         ]);
         DB::transaction(function () use ($user, $data) {
             $user->update(collect($data)->only('name', 'email')->all());
@@ -58,12 +60,20 @@ class SettingsController extends Controller
             'password' => ['required', 'confirmed', 'different:current_password', 'max:128', Password::min(12)->mixedCase()->numbers()],
         ]);
         DB::transaction(function () use ($request, $data) {
-            $request->user()->forceFill(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60)])->save();
+            $user = User::lockForUpdate()->findOrFail($request->user()->id);
+            if ($user->disabled_at || ! Hash::check($data['current_password'], $user->password)) {
+                throw ValidationException::withMessages(['current_password' => 'Your password or account access has changed. Please sign in again.']);
+            }
+            $user->forceFill(['password' => Hash::make($data['password']), 'remember_token' => Str::random(60), 'must_change_password' => false, 'session_version' => $user->session_version + 1])->save();
+            $request->user()->setRawAttributes($user->getAttributes(), true);
             DB::table('sessions')->where('user_id', $request->user()->id)->where('id', '!=', $request->session()->getId())->delete();
             Audit::record('account.password_changed', $request->user());
         });
         $request->session()->regenerate();
+        if ($request->user()->role === 'employee') {
+            $request->session()->put('employee_session_version', $request->user()->session_version);
+        }
 
-        return response()->json(['message' => 'Password changed. Other sessions have been signed out.', 'csrf_token' => csrf_token()]);
+        return response()->json(['message' => 'Password changed. Other sessions have been signed out.', 'user' => $request->user()->fresh()->load('guardian'), 'csrf_token' => csrf_token()]);
     }
 }

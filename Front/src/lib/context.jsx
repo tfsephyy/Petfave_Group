@@ -32,10 +32,14 @@ export function SessionProvider({ children }) {
       )
       .finally(() => setLoading(false))
     const expired = () => setUser(null)
+    const passwordRequired = () =>
+      setUser((current) => (current ? { ...current, must_change_password: true } : current))
     const timer = setInterval(() => setNow(new Date()), 60000)
     window.addEventListener('petfave:expired', expired)
+    window.addEventListener('petfave:password-required', passwordRequired)
     return () => {
       window.removeEventListener('petfave:expired', expired)
+      window.removeEventListener('petfave:password-required', passwordRequired)
       clearInterval(timer)
     }
   }, [])

@@ -368,34 +368,6 @@
   margin-top: auto;
   padding-top: 25px;
 }
-.sidebar-care {
-  background: var(--cream);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 17px 14px;
-  margin: 0 3px 20px;
-  color: var(--accent);
-}
-.sidebar-care > svg {
-  margin-bottom: 8px;
-  transform: rotate(-15deg);
-}
-.sidebar-care strong {
-  display: block;
-  font-size: 13px;
-}
-.sidebar-care p {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 4px 0 14px;
-}
-.sidebar-care a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  font-weight: 700;
-}
 .sidebar-footer {
   border-top: 1px solid var(--border);
   margin-top: 15px;

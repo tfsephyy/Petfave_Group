@@ -38,7 +38,11 @@ export function AccountSettings() {
               </span>
               <div>
                 <h2>Your details</h2>
-                <p>One profile, kept in sync with your contact record.</p>
+                <p>
+                  {user.role === 'employee'
+                    ? 'Keep your personal account details up to date.'
+                    : 'One profile, kept in sync with your contact record.'}
+                </p>
               </div>
               <Badge tone="active">{user.role}</Badge>
             </div>
@@ -114,7 +118,8 @@ export function AccountSettings() {
               path="/settings/password"
               method="PUT"
               onClose={() => setPasswordForm((v) => v + 1)}
-              onSaved={() => {
+              onSaved={(data) => {
+                if (data.user) setUser(data.user)
                 notify('Password changed. Other sessions have been signed out.')
                 setPasswordForm((v) => v + 1)
               }}
@@ -165,8 +170,9 @@ export function AccountSettings() {
               <h2>In good hands</h2>
             </div>
             <p className="muted">
-              Your health records are shared with your clinic’s care team. Pet parents can only
-              access their own pets and appointments.
+              {user.role === 'employee'
+                ? 'Your employee account includes your personal settings. Your administrator manages access to clinic features.'
+                : 'Your health records are shared with your clinic’s care team. Pet parents can only access their own pets and appointments.'}
             </p>
             <div className="security-point">
               <ShieldCheck size={17} />

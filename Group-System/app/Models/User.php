@@ -13,15 +13,15 @@ class User extends Authenticatable
 
     protected $table = 'pf_accounts';
 
-    protected $attributes = ['role' => 'owner'];
+    protected $attributes = ['role' => 'owner', 'must_change_password' => false, 'session_version' => 0];
 
     protected $fillable = ['name', 'email', 'password'];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'session_version'];
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'disabled_at' => 'datetime'];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'disabled_at' => 'datetime', 'must_change_password' => 'boolean', 'session_version' => 'integer'];
     }
 
     public function guardian(): HasOne

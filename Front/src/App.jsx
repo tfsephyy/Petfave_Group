@@ -16,13 +16,14 @@ import {
   ClipboardList,
   Heart,
   LayoutDashboard,
+  KeyRound,
   Menu,
   Package,
   PawPrint,
-  Plus,
   Settings,
   ShieldCheck,
   Users,
+  UsersRound,
   X,
 } from 'lucide-react'
 import { SessionProvider } from './lib/context'
@@ -39,6 +40,9 @@ import Inventory from './pages/Inventory'
 import { AccountSettings, AuditLog } from './pages/Settings'
 import ThemeToggle from './components/ThemeToggle'
 import LogoutButton from './components/LogoutButton'
+import Employees from './pages/Employees'
+import EmployeeHome from './pages/EmployeeHome'
+import ChangePassword from './pages/ChangePassword'
 import './App.css'
 import './design.css'
 import './public.css'
@@ -48,17 +52,30 @@ function Workspace() {
   const [sidebar, setSidebar] = useState(false)
   const [notifications, setNotifications] = useState(false)
   const location = useLocation()
-  const alerts = useResource(user ? '/dashboard' : '/session')
+  const employee = user?.role === 'employee'
+  const restricted = employee || user?.must_change_password
+  const alerts = useResource(user && !restricted ? '/dashboard' : null)
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
-  const navigation = [
-    [LayoutDashboard, 'Overview', '/app'],
-    ...(staff ? [[Users, 'Pet parents', '/app/guardians']] : []),
-    [PawPrint, staff ? 'Patients' : 'My pets', '/app/pets'],
-    [CalendarDays, 'Appointments', '/app/appointments'],
-    ...(staff ? [[Package, 'Inventory', '/app/inventory']] : []),
-    ...(user.role === 'admin' ? [[ClipboardList, 'Audit trail', '/app/audit']] : []),
-  ]
+  if (user.must_change_password && location.pathname !== '/app/change-password')
+    return <Navigate to="/app/change-password" replace />
+  if (!user.must_change_password && location.pathname === '/app/change-password')
+    return <Navigate to="/app" replace />
+  if (employee && !['/app', '/app/settings', '/app/change-password'].includes(location.pathname))
+    return <Navigate to="/app" replace />
+  const navigation = user.must_change_password
+    ? [[KeyRound, 'Set your password', '/app/change-password']]
+    : employee
+      ? [[LayoutDashboard, 'Overview', '/app']]
+      : [
+          [LayoutDashboard, 'Overview', '/app'],
+          ...(staff ? [[Users, 'Pet parents', '/app/guardians']] : []),
+          [PawPrint, staff ? 'Patients' : 'My pets', '/app/pets'],
+          [CalendarDays, 'Appointments', '/app/appointments'],
+          ...(staff ? [[Package, 'Inventory', '/app/inventory']] : []),
+          ...(user.role === 'admin' ? [[ClipboardList, 'Audit trail', '/app/audit']] : []),
+          ...(user.role === 'admin' ? [[UsersRound, 'Employees', '/app/employees']] : []),
+        ]
   const current =
     navigation.find(([, , path]) =>
       path === '/app' ? location.pathname === path : location.pathname.startsWith(path),
@@ -94,11 +111,15 @@ function Workspace() {
           </span>
           <div>
             <strong>PetFave Clinic</strong>
-            <small>{staff ? 'Clinic workspace' : 'Pet parent portal'}</small>
+            <small>
+              {employee ? 'Employee workspace' : staff ? 'Clinic workspace' : 'Pet parent portal'}
+            </small>
           </div>
           <ShieldCheck size={16} />
         </div>
-        <p className="nav-label">{staff ? 'WORKSPACE' : 'YOUR LITTLE WORLD'}</p>
+        <p className="nav-label">
+          {employee ? 'YOUR WORKSPACE' : staff ? 'WORKSPACE' : 'YOUR LITTLE WORLD'}
+        </p>
         <nav>
           {navigation.map(([Icon, label, path]) => (
             <NavLink
@@ -117,17 +138,11 @@ function Workspace() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-care">
-            <PawPrint size={23} />
-            <strong>Little paws. Big love.</strong>
-            <p>Here for every healthy chapter.</p>
-            <Link to="/app/appointments">
-              Plan their next visit <Plus size={14} />
-            </Link>
-          </div>
-          <NavLink to="/app/settings" className="nav-link">
-            <Settings size={19} /> Account settings
-          </NavLink>
+          {!user.must_change_password && (
+            <NavLink to="/app/settings" className="nav-link" onClick={() => setSidebar(false)}>
+              <Settings size={19} /> Account settings
+            </NavLink>
+          )}
           <LogoutButton className="nav-link" label="Sign out" />
           <div className="sidebar-footer">
             <span className="live-dot" /> Connected with care
@@ -151,47 +166,52 @@ function Workspace() {
           <div className="topbar-actions">
             <span className="clinic-date">{date(now, { weekday: 'short' })}</span>
             <ThemeToggle compact />
-            <div className="notification-wrap">
-              <button
-                className="icon-button notification-button"
-                aria-label="Care reminders"
-                aria-expanded={notifications}
-                onClick={() => setNotifications((v) => !v)}
-              >
-                <Bell size={19} />
-                {due.length > 0 && <span />}
-              </button>
-              {notifications && (
-                <div className="notification-panel">
-                  <h3>Care reminders</h3>
-                  {due.length ? (
-                    due.map((record) => (
-                      <Link
-                        key={record.id}
-                        to={`/app/pets/${record.animal_id}`}
-                        onClick={() => setNotifications(false)}
-                      >
-                        <span className="mini-icon">
-                          <Heart size={16} />
-                        </span>
-                        <div>
-                          <strong>
-                            {record.animal?.name} · {record.title}
-                          </strong>
-                          <small>Due {date(record.due_on)}</small>
-                        </div>
-                      </Link>
-                    ))
-                  ) : (
-                    <Empty
-                      title="All caught up"
-                      text="Upcoming preventive care reminders will appear here."
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-            <Link to="/app/settings" className="user-menu">
+            {!restricted && (
+              <div className="notification-wrap">
+                <button
+                  className="icon-button notification-button"
+                  aria-label="Care reminders"
+                  aria-expanded={notifications}
+                  onClick={() => setNotifications((v) => !v)}
+                >
+                  <Bell size={19} />
+                  {due.length > 0 && <span />}
+                </button>
+                {notifications && (
+                  <div className="notification-panel">
+                    <h3>Care reminders</h3>
+                    {due.length ? (
+                      due.map((record) => (
+                        <Link
+                          key={record.id}
+                          to={`/app/pets/${record.animal_id}`}
+                          onClick={() => setNotifications(false)}
+                        >
+                          <span className="mini-icon">
+                            <Heart size={16} />
+                          </span>
+                          <div>
+                            <strong>
+                              {record.animal?.name} · {record.title}
+                            </strong>
+                            <small>Due {date(record.due_on)}</small>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <Empty
+                        title="All caught up"
+                        text="Upcoming preventive care reminders will appear here."
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <Link
+              to={user.must_change_password ? '/app/change-password' : '/app/settings'}
+              className="user-menu"
+            >
               <span className="avatar">
                 {user.name
                   .split(' ')
@@ -219,6 +239,11 @@ function Workspace() {
   )
 }
 
+function WorkspaceHome() {
+  const { user } = useSession()
+  return user.role === 'employee' ? <EmployeeHome /> : <Dashboard />
+}
+
 function Guard({ children, admin = false }) {
   const { staff, user } = useSession()
   return (admin ? user?.role === 'admin' : staff) ? children : <Navigate to="/app" replace />
@@ -241,7 +266,16 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
       <Route path="/reset-password" element={<AuthPage mode="reset" />} />
       <Route path="/app" element={<Workspace />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<WorkspaceHome />} />
+        <Route path="change-password" element={<ChangePassword />} />
+        <Route
+          path="employees"
+          element={
+            <Guard admin>
+              <Employees />
+            </Guard>
+          }
+        />
         <Route path="pets" element={<Animals />} />
         <Route path="pets/:id" element={<AnimalDetail />} />
         <Route

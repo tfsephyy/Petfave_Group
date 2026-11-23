@@ -20,7 +20,8 @@ class AuthController extends Controller
 {
     public function session(Request $request): JsonResponse
     {
-        if ($request->user()?->disabled_at) {
+        $user = $request->user();
+        if ($user?->disabled_at || ($user?->role === 'employee' && $request->session()->get('employee_session_version') !== $user->session_version)) {
             return $this->logout($request);
         }
 
@@ -57,6 +58,9 @@ class AuthController extends Controller
         }
         $request->session()->regenerate();
         Audit::record('account.signed_in', $request->user());
+        if ($request->user()->role === 'employee') {
+            $request->session()->put('employee_session_version', $request->user()->session_version);
+        }
 
         return $this->session($request);
     }
@@ -67,7 +71,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['csrf_token' => csrf_token()]);
+        return response()->json(['user' => null, 'csrf_token' => csrf_token()]);
     }
 
     public function forgotPassword(Request $request): JsonResponse
@@ -86,7 +90,7 @@ class AuthController extends Controller
         ]);
         $status = Password::reset($request->only('email', 'password', 'password_confirmation', 'token'), function (User $user, string $password) {
             DB::transaction(function () use ($user, $password) {
-                $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
+                $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60), 'must_change_password' => false, 'session_version' => $user->session_version + 1])->save();
                 DB::table('sessions')->where('user_id', $user->id)->delete();
                 Audit::record('account.password_reset', $user);
             });

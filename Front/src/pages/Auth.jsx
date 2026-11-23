@@ -202,7 +202,7 @@ export function Landing() {
             </h2>
             <p>A few simple steps bring your pet's care into focus.</p>
             <Link to={user ? '/app' : '/register'} className="text-button">
-              {user ? 'Open your workspace' : "Let\u2019s get you started"}
+              {user ? 'Open your workspace' : 'Let\u2019s get you started'}
               <ArrowRight size={17} />
             </Link>
           </div>
@@ -214,7 +214,7 @@ export function Landing() {
               ],
               [
                 'Plan their next visit',
-                "Choose a service and request a time with your clinic\u2019s care team.",
+                'Choose a service and request a time with your clinic\u2019s care team.',
               ],
               [
                 'Keep their story together',
@@ -289,7 +289,8 @@ export function AuthPage({ mode = 'login' }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [sent, setSent] = useState(false)
-  if (user) return <Navigate to="/app" replace />
+  if (user)
+    return <Navigate to={user.must_change_password ? '/app/change-password' : '/app'} replace />
   const register = mode === 'register',
     forgot = mode === 'forgot',
     reset = mode === 'reset'
@@ -318,7 +319,7 @@ export function AuthPage({ mode = 'login' }) {
         navigate('/login')
       } else {
         setUser(data.user)
-        navigate('/app')
+        navigate(data.user.must_change_password ? '/app/change-password' : '/app')
       }
     } catch (err) {
       setError(err)
@@ -398,11 +399,7 @@ export function AuthPage({ mode = 'login' }) {
               {!forgot && (
                 <Field
                   label="Password"
-                  hint={
-                    register || reset
-                      ? '12+ chars, upper, lower & number.'
-                      : undefined
-                  }
+                  hint={register || reset ? '12+ chars, upper, lower & number.' : undefined}
                 >
                   <div className="password-input">
                     <input
