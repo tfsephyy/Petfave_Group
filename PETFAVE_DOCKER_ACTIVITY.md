@@ -2,7 +2,7 @@
 
 Run your PetFave veterinary clinic system in Docker with four services: React 19 frontend, Laravel 13 backend, MySQL 8.4 database, and phpMyAdmin. The Docker project is named **petfave**, and the guide is named **PETFAVE_DOCKER_ACTIVITY.md**.
 
-Your React app lives in `Front/`, and Laravel lives in `Group-System/`. Node builds React, Nginx serves the frontend at **http://localhost:3000**, and its `/api/` proxy forwards requests to the Laravel backend. Direct backend access is **http://localhost:5000**, and phpMyAdmin is **http://localhost:8080**.
+Your React app lives in `Front/`, and Laravel lives in `Group-System/`. Node.js 24 runs React with Vite at **http://localhost:3000**. Vite's `/api/` proxy forwards requests to Laravel. The backend at **http://localhost:5000** opens Laravel's welcome page, and phpMyAdmin is **http://localhost:8080**.
 
 ## 1 Check Docker Desktop
 
@@ -21,7 +21,7 @@ docker run --rm hello-world
 
 Use [DockerLab Academy](https://docker-simulator.vercel.app/) beside this activity. Follow the lessons available for Laravel, React, MySQL, phpMyAdmin, and Compose.
 
-For PetFave, Laravel handles the API and sessions in the `backend` container. Nginx serves React in the `frontend` container. The API proxy keeps browser requests on the frontend origin, preserving session cookies and request forgery protection. Node is used during the image build.
+For PetFave, Laravel handles the API and sessions in the `backend` container. Node.js runs the Vite development server in the `frontend` container. Its API proxy keeps browser requests on the frontend origin, preserving session cookies and request forgery protection. Node also verifies the production asset build when building the image.
 
 Simulator examples teach the commands; the files below package your actual clinic system. Use the real application to verify the activity.
 
@@ -35,18 +35,18 @@ Set-Location -LiteralPath 'C:\laragon\www\New folder'
 
 | File or folder | Purpose |
 | --- | --- |
-| `Dockerfile` | Builds separate `backend` and `frontend` images using shared frontend assets |
+| `Front/Dockerfile` | Installs locked npm dependencies, builds React, and runs Node.js/Vite on container port 3000 |
+| `Group-System/Dockerfile` | Installs PHP extensions and Composer dependencies, and runs Laravel with Apache on container port 80 |
 | `compose.yaml` | Defines `backend`, `frontend`, `database`, and `phpmyadmin` under `petfave` |
-| `petfave-apache.conf` | Points Apache at Laravel's `public/` directory and enables its routing rules |
-| `petfave-nginx.conf` | Serves React routes and forwards `/api/` and `/up` to Laravel |
-| `petfave-php.ini` | Allows the existing 5 MB pet-photo uploads and sends PHP errors to container logs |
-| `.dockerignore` | Excludes local dependencies, credentials, databases, uploads, and previous builds from the image |
+| `Group-System/petfave-apache.conf` | Points Apache at Laravel's `public/` directory and enables its routing rules |
+| `Group-System/petfave-php.ini` | Allows the existing 5 MB pet-photo uploads and sends PHP errors to container logs |
+| `Front/.dockerignore`, `Group-System/.dockerignore` | Exclude local dependencies, credentials, databases, uploads, and previous builds from each image |
 | `.env.example` | Template for Docker settings in the workspace root |
 | `.env` | Local Docker key and database passwords; excluded from Git |
 | `Front/` | Existing React application |
 | `Group-System/` | Existing Laravel backend |
 
-Docker builds both folders from this root. Keep the existing folder names. The root Docker `.env` is separate from `Group-System/.env`, which continues to configure Laragon.
+There are exactly two application Dockerfiles and one root Compose file. Compose builds each image from its own folder. Keep the existing folder names. The root Docker `.env` is separate from `Group-System/.env`, which continues to configure Laragon.
 
 ## 4 Prepare the Docker environment
 
@@ -74,7 +74,7 @@ if (-not (Test-Path -LiteralPath '.env')) {
 }
 ```
 
-Keep the root `.env` with this installation. The app key protects encrypted sessions and should stay stable across restarts. To use another browser port, change `APP_PORT` in that file; Compose derives both application URLs from it.
+Keep the root `.env` with this installation. The app key protects encrypted sessions and should stay stable across restarts. `APP_PORT`, `BACKEND_PORT`, and `PHPMYADMIN_PORT` set the three browser ports. Compose derives the frontend and backend URLs from their respective ports.
 
 ## 5 Build and start PetFave
 
@@ -87,7 +87,9 @@ docker compose ps
 docker compose logs --tail=50 backend frontend database phpmyadmin
 ```
 
-The first build downloads images and installs the locked npm and Composer dependencies. Node 24 builds the frontend assets. The backend image runs PHP 8.3 and Apache, and the frontend image runs Nginx. Source changes require rebuilding.
+The first build downloads images and installs the locked npm and Composer dependencies. Node 24 builds the frontend assets and starts Vite on port 3000. The backend image runs PHP 8.3 and Apache. Source changes require rebuilding; no host Node.js process is needed.
+
+Compose sets `APP_SERVE_FRONTEND=false` for Laravel: its root shows the Laravel welcome page, and browser app routes redirect to the frontend. Laragon retains its existing combined frontend behavior by default. The frontend uses `BACKEND_URL=http://backend` for its internal `/api/` and `/up` proxy.
 
 The backend and phpMyAdmin wait for the database health check, and the frontend waits for Laravel. All four services have health checks and restart automatically with Docker unless explicitly stopped. Compose supports readiness conditions through [service health checks](https://docs.docker.com/compose/how-tos/startup-order/).
 
@@ -135,6 +137,8 @@ docker compose ps
 | `/api/session` | JSON containing session information; signing in is not required |
 | Migration status | All application migrations show as run |
 | Direct backend | `http://localhost:5000/up` returns HTTP 200 |
+| Backend landing page | `http://localhost:5000` shows Laravel's welcome page; Log in opens the React login page |
+| Node.js | `docker compose exec frontend node --version` shows Node 24; `docker compose logs frontend` shows Vite on port 3000 |
 | phpMyAdmin | `http://localhost:8080` connects to the clinic database |
 | Container status | All four services are running and healthy |
 
@@ -173,7 +177,7 @@ Sign in again and check the saved record and photo. The `clinic_database` volume
 | Password reset email is not received | This local activity logs mail; read `docker compose logs backend` |
 | Database rejects a changed password | MySQL initialization settings apply to a fresh volume; editing `.env` alone does not change an existing database user's password |
 
-This activity binds HTTP to your own computer. An internet deployment needs HTTPS, secure cookies, configured mail, and backups. Follow the existing backend README for deployment requirements.
+This activity uses Vite's development server and binds HTTP to your own computer. An internet deployment needs a production frontend server, HTTPS, secure cookies, configured mail, and backups. Follow the existing backend README for deployment requirements.
 
 ## 10 Capture your activity evidence
 
@@ -187,6 +191,6 @@ Keep credentials and temporary staff passwords out of screenshots. Submit the Do
 - [Official PHP image and Apache configuration](https://hub.docker.com/_/php)
 - [Official MySQL image and initialization variables](https://hub.docker.com/_/mysql)
 - [Official phpMyAdmin image](https://hub.docker.com/_/phpmyadmin)
-- [Official Nginx image](https://hub.docker.com/_/nginx)
+- [Official Node.js image](https://hub.docker.com/_/node)
 - [Compose service readiness](https://docs.docker.com/compose/how-tos/startup-order/)
 - [Compose project naming](https://docs.docker.com/compose/how-tos/environment-variables/envvars/)

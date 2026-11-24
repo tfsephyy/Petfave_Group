@@ -17,7 +17,7 @@ test('public pages preserve the theme and work on desktop and mobile', async ({
   })
   const secondTab = await context.newPage()
   await secondTab.goto('/login')
-  await expect(secondTab.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+  await expect(secondTab.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Switch to dark theme' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(secondTab.locator('html')).toHaveAttribute('data-theme', 'dark')
@@ -70,7 +70,7 @@ test('public pages preserve the theme and work on desktop and mobile', async ({
     page.getByRole('link', { name: 'Create your account', exact: true }).first(),
   ).toBeVisible()
   await page.getByRole('link', { name: 'Sign in', exact: true }).first().click()
-  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 

@@ -75,6 +75,14 @@ Route::prefix('api')->group(function () {
 });
 
 Route::get('/{path?}', function () {
+    if (! config('app.serve_frontend')) {
+        if (request()->path() === '/') {
+            return view('welcome');
+        }
+
+        return redirect()->away(rtrim(config('app.frontend_url'), '/').'/'.request()->path());
+    }
+
     $path = public_path('app-assets/index.html');
     if (! is_file($path)) {
         return response('PetFave frontend is not built yet. Run npm run build in the Front directory, or start its Vite development server.', 503)->header('Content-Type', 'text/plain');

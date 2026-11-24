@@ -16,4 +16,18 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_separate_backend_shows_the_laravel_welcome_page(): void
+    {
+        config(['app.serve_frontend' => false]);
+
+        $this->get('/')->assertOk()->assertViewIs('welcome');
+    }
+
+    public function test_separate_backend_redirects_login_to_the_frontend(): void
+    {
+        config(['app.serve_frontend' => false, 'app.frontend_url' => 'http://localhost:3000']);
+
+        $this->get('/login')->assertRedirect('http://localhost:3000/login');
+    }
 }

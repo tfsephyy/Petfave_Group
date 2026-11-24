@@ -17,6 +17,8 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost:8000')),
 
+    'serve_frontend' => (bool) env('APP_SERVE_FRONTEND', true),
+
     'clinic_timezone' => 'Asia/Manila',
 
     /*
