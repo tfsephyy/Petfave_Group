@@ -31,7 +31,7 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return in_array($this->role, ['admin', 'veterinarian', 'receptionist'], true);
+        return in_array($this->role, ['admin', 'veterinarian', 'receptionist', 'employee'], true);
     }
 
     public function isClinician(): bool

@@ -2,7 +2,7 @@
 
 Run your PetFave veterinary clinic system in Docker with four services: React 19 frontend, Laravel 13 backend, MySQL 8.4 database, and phpMyAdmin. The Docker project is named **petfave**, and the guide is named **PETFAVE_DOCKER_ACTIVITY.md**.
 
-Your React app lives in `Front/`, and Laravel lives in `Group-System/`. Node builds React, Nginx serves the frontend at **http://localhost:8088**, and its `/api/` proxy forwards requests to the Laravel backend. Direct backend access is **http://localhost:8089**, and phpMyAdmin is **http://localhost:8090**.
+Your React app lives in `Front/`, and Laravel lives in `Group-System/`. Node builds React, Nginx serves the frontend at **http://localhost:3000**, and its `/api/` proxy forwards requests to the Laravel backend. Direct backend access is **http://localhost:5000**, and phpMyAdmin is **http://localhost:8080**.
 
 ## 1 Check Docker Desktop
 
@@ -119,11 +119,11 @@ The stack uses `APP_ENV=production` with debugging disabled. The existing `petfa
 
 ## 7 Verify the interface and API
 
-Open **http://localhost:8088**. Use the same hostname for the whole session so cookies remain consistent.
+Open **http://localhost:3000**. Use the same hostname for the whole session so cookies remain consistent.
 
 ```powershell
-Invoke-WebRequest -Uri 'http://localhost:8088/up' -UseBasicParsing | Select-Object StatusCode
-Invoke-RestMethod -Uri 'http://localhost:8088/api/session'
+Invoke-WebRequest -Uri 'http://localhost:3000/up' -UseBasicParsing | Select-Object StatusCode
+Invoke-RestMethod -Uri 'http://localhost:3000/api/session'
 docker compose exec backend php artisan migrate:status --no-interaction
 docker compose ps
 ```
@@ -134,8 +134,8 @@ docker compose ps
 | `/up` | HTTP 200 from Laravel's existing health route |
 | `/api/session` | JSON containing session information; signing in is not required |
 | Migration status | All application migrations show as run |
-| Direct backend | `http://localhost:8089/up` returns HTTP 200 |
-| phpMyAdmin | `http://localhost:8090` connects to the clinic database |
+| Direct backend | `http://localhost:5000/up` returns HTTP 200 |
+| phpMyAdmin | `http://localhost:8080` connects to the clinic database |
 | Container status | All four services are running and healthy |
 
 The health route checks that Laravel responds. To verify the database and session workflow, sign in and create a test pet parent and patient, book an appointment, and restock a test inventory item. Reload the pages and confirm those records are still present. Use the normal interface for form submissions so its session and request forgery handling are exercised.
@@ -165,7 +165,7 @@ Sign in again and check the saved record and photo. The `clinic_database` volume
 | Run an Artisan command | `docker compose exec backend php artisan <command> --no-interaction` |
 | Docker cannot connect to its engine | Open Docker Desktop and resolve its startup message |
 | Missing key or passwords | Complete step 4 in the workspace root |
-| Port 8088 is occupied | Change `APP_PORT` in the root `.env`, recreate the stack, and use the new URL |
+| Port 3000 is occupied | Change `APP_PORT` in the root `.env`, recreate the stack, and use the new URL |
 | Database tables are missing | Complete step 6 |
 | Permission errors in storage | Run `docker compose exec --user root backend chown -R www-data:www-data storage bootstrap/cache` |
 | Login or form request returns 419 | Use one hostname consistently, allow cookies, and sign in again |

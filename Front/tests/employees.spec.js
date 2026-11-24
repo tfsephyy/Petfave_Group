@@ -16,7 +16,7 @@ async function setPassword(page, temporary, password) {
   await expect(page.getByRole('heading', { name: 'Employee workspace', exact: true })).toBeVisible()
 }
 
-test('admin manages employee credentials and employees have limited access', async ({
+test('admin manages employee credentials and employees manage clinic modules', async ({
   page,
   browser,
   baseURL,
@@ -81,7 +81,7 @@ test('admin manages employee credentials and employees have limited access', asy
     await setPassword(employeePage, temporary, password)
     await expect(employeePage).toHaveURL(/\/app$/)
     expect((await employeeContext.request.get('/api/employees')).status()).toBe(403)
-    expect((await employeeContext.request.get('/api/animals')).status()).toBe(403)
+    expect((await employeeContext.request.get('/api/animals')).status()).toBe(200)
     await employeePage.goto('/app/employees')
     await expect(employeePage).toHaveURL(/\/app$/)
     await employeePage.getByRole('button', { name: 'Open navigation', exact: true }).click()
@@ -89,9 +89,30 @@ test('admin manages employee credentials and employees have limited access', asy
       name: 'Workspace sidebar',
       exact: true,
     })
-    await expect(sidebar.getByRole('link', { name: 'Patients', exact: true })).toHaveCount(0)
+    for (const label of ['Pet parents', 'Patients', 'Appointments', 'Inventory']) {
+      await expect(sidebar.getByRole('link', { name: label, exact: true })).toBeVisible()
+    }
     await expect(sidebar.getByRole('link', { name: 'Employees', exact: true })).toHaveCount(0)
-    await expect(sidebar.getByRole('link', { name: 'Appointments', exact: true })).toHaveCount(0)
+    await expect(sidebar.getByRole('link', { name: 'Audit trail', exact: true })).toHaveCount(0)
+    await sidebar.getByRole('link', { name: 'Pet parents', exact: true }).click()
+    await employeePage.getByRole('button', { name: 'Add pet parent', exact: true }).first().click()
+    const employeeDialog = employeePage.getByRole('dialog')
+    await employeeDialog.getByLabel('Full name').fill('Employee Managed Parent')
+    await employeeDialog
+      .getByLabel('Email address')
+      .fill(`employee-parent-${Date.now()}@example.test`)
+    await employeeDialog.getByRole('button', { name: 'Save pet parent', exact: true }).click()
+    await expect(employeePage.getByText('Employee Managed Parent', { exact: true })).toBeVisible()
+    for (const [path, title] of [
+      ['/app/pets', 'Our patients'],
+      ['/app/appointments', 'The care calendar'],
+      ['/app/inventory', 'The supply cupboard'],
+    ]) {
+      await employeePage.goto(path)
+      await expect(employeePage).toHaveURL(new RegExp(`${path}$`))
+      await expect(employeePage.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    }
+    await employeePage.getByRole('button', { name: 'Open navigation', exact: true }).click()
     await sidebar.getByRole('link', { name: 'Account settings', exact: true }).click()
     await expect(employeePage.locator('.sidebar')).not.toHaveClass(/open/)
     await expect(

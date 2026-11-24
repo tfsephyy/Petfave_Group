@@ -171,7 +171,7 @@ export function AccountSettings() {
             </div>
             <p className="muted">
               {user.role === 'employee'
-                ? 'Your employee account includes your personal settings. Your administrator manages access to clinic features.'
+                ? 'Your employee account can manage pet parents, patients, appointments, and inventory. Keep your profile and password up to date here.'
                 : 'Your health records are shared with your clinic’s care team. Pet parents can only access their own pets and appointments.'}
             </p>
             <div className="security-point">

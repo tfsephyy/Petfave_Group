@@ -43,9 +43,22 @@ export default function EmployeeHome() {
             <h2>Your access</h2>
           </div>
           <p className="muted">
-            You can manage your profile and password. Clinic features will appear here when your
-            administrator assigns access.
+            Manage pet parents, patients, appointments, and inventory from your workspace.
           </p>
+          <ul className="employee-module-links">
+            {[
+              ['Pet parents', '/app/guardians'],
+              ['Patients', '/app/pets'],
+              ['Appointments', '/app/appointments'],
+              ['Inventory', '/app/inventory'],
+            ].map(([label, path]) => (
+              <li key={path}>
+                <Link className="button secondary employee-settings-link" to={path}>
+                  {label} <ArrowRight size={16} />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </>

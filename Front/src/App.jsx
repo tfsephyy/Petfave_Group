@@ -53,7 +53,7 @@ function Workspace() {
   const [notifications, setNotifications] = useState(false)
   const location = useLocation()
   const employee = user?.role === 'employee'
-  const restricted = employee || user?.must_change_password
+  const restricted = user?.must_change_password
   const alerts = useResource(user && !restricted ? '/dashboard' : null)
   if (loading) return <Spinner />
   if (!user) return <Navigate to="/login" replace />
@@ -61,21 +61,17 @@ function Workspace() {
     return <Navigate to="/app/change-password" replace />
   if (!user.must_change_password && location.pathname === '/app/change-password')
     return <Navigate to="/app" replace />
-  if (employee && !['/app', '/app/settings', '/app/change-password'].includes(location.pathname))
-    return <Navigate to="/app" replace />
   const navigation = user.must_change_password
     ? [[KeyRound, 'Set your password', '/app/change-password']]
-    : employee
-      ? [[LayoutDashboard, 'Overview', '/app']]
-      : [
-          [LayoutDashboard, 'Overview', '/app'],
-          ...(staff ? [[Users, 'Pet parents', '/app/guardians']] : []),
-          [PawPrint, staff ? 'Patients' : 'My pets', '/app/pets'],
-          [CalendarDays, 'Appointments', '/app/appointments'],
-          ...(staff ? [[Package, 'Inventory', '/app/inventory']] : []),
-          ...(user.role === 'admin' ? [[ClipboardList, 'Audit trail', '/app/audit']] : []),
-          ...(user.role === 'admin' ? [[UsersRound, 'Employees', '/app/employees']] : []),
-        ]
+    : [
+        [LayoutDashboard, 'Overview', '/app'],
+        ...(staff ? [[Users, 'Pet parents', '/app/guardians']] : []),
+        [PawPrint, staff ? 'Patients' : 'My pets', '/app/pets'],
+        [CalendarDays, 'Appointments', '/app/appointments'],
+        ...(staff ? [[Package, 'Inventory', '/app/inventory']] : []),
+        ...(user.role === 'admin' ? [[ClipboardList, 'Audit trail', '/app/audit']] : []),
+        ...(user.role === 'admin' ? [[UsersRound, 'Employees', '/app/employees']] : []),
+      ]
   const current =
     navigation.find(([, , path]) =>
       path === '/app' ? location.pathname === path : location.pathname.startsWith(path),

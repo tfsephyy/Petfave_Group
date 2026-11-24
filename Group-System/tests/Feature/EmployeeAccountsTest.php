@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Animal;
 use App\Models\AuditEvent;
+use App\Models\BookingResource;
+use App\Models\Species;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,21 +88,79 @@ class EmployeeAccountsTest extends TestCase
         $this->postJson('/api/login', ['email' => $data['employee']['email'], 'password' => $password['password']])->assertOk()->assertJsonPath('user.must_change_password', false);
     }
 
-    public function test_employee_access_remains_limited_after_password_setup(): void
+    public function test_employee_can_access_clinic_modules_after_password_setup(): void
     {
         $employee = $this->employee();
         $animal = Animal::factory()->create();
         $this->actingAs($employee)->withSession(['employee_session_version' => 0]);
-        foreach (['dashboard', 'animals', 'animals/'.$animal->id, 'guardians', 'options', 'bookings', 'availability?date=2026-12-01', 'inventory', 'stock-movements', 'audit', 'employees'] as $module) {
+        foreach (['dashboard', 'animals', 'animals/'.$animal->id, 'guardians', 'options', 'bookings', 'availability?date=2026-12-01', 'inventory', 'stock-movements'] as $module) {
+            $this->getJson('/api/'.$module)->assertOk();
+        }
+        $this->getJson('/api/animals')->assertJsonPath('data.0.id', $animal->id);
+        foreach (['audit', 'employees'] as $module) {
             $this->getJson('/api/'.$module)->assertForbidden();
         }
-        $this->postJson('/api/animals', [])->assertForbidden();
-        $this->putJson('/api/animals/'.$animal->id, [])->assertForbidden();
-        $this->postJson('/api/bookings', [])->assertForbidden();
         $this->postJson('/api/animals/'.$animal->id.'/entries', [])->assertForbidden();
-        $this->postJson('/api/archive-batch', [])->assertForbidden();
+        $this->postJson('/api/animals/'.$animal->id.'/encounters', [])->assertForbidden();
         $this->deleteJson('/api/settings/account', ['current_password' => 'EmployeePassword123!'])->assertForbidden();
         $this->getJson('/api/session')->assertOk()->assertJsonPath('user.id', $employee->id);
+    }
+
+    public function test_employee_can_manage_pet_parents_and_patient_profiles(): void
+    {
+        $this->actingAs($this->employee())->withSession(['employee_session_version' => 0]);
+        $parentData = ['name' => 'Employee Managed Parent', 'email' => 'managed-parent@example.test'];
+        $guardian = $this->postJson('/api/guardians', $parentData)->assertCreated()->json();
+        $this->putJson('/api/guardians/'.$guardian['id'], $parentData + ['phone' => '+63 917 555 0123'])
+            ->assertOk()->assertJsonPath('phone', '+63 917 555 0123');
+        $this->getJson('/api/guardians/'.$guardian['id'])->assertOk();
+
+        $animalData = ['guardian_id' => $guardian['id'], 'species_id' => Species::firstOrCreate(['name' => 'Dog'])->id, 'name' => 'Employee Managed Pet', 'sex' => 'female'];
+        $animal = $this->postJson('/api/animals', $animalData)->assertCreated()->json();
+        $this->putJson('/api/animals/'.$animal['id'], array_replace($animalData, ['name' => 'Updated Patient']))
+            ->assertOk()->assertJsonPath('name', 'Updated Patient');
+        $this->patchJson('/api/animals/'.$animal['id'].'/archive', ['archived' => true])->assertOk();
+        $this->assertDatabaseHas('pf_animals', ['id' => $animal['id'], 'name' => 'Updated Patient']);
+        $this->patchJson('/api/animals/'.$animal['id'].'/archive', ['archived' => false])->assertOk()->assertJsonPath('archived_at', null);
+        $this->postJson('/api/archive-batch', ['resource' => 'guardians', 'ids' => [$guardian['id']], 'archived' => true])->assertOk();
+        $this->patchJson('/api/guardians/'.$guardian['id'].'/archive', ['archived' => false])->assertOk()->assertJsonPath('archived_at', null);
+        $this->assertDatabaseHas('pf_guardians', ['id' => $guardian['id'], 'account_id' => null, 'phone' => '+63 917 555 0123']);
+    }
+
+    public function test_employee_can_create_reschedule_confirm_and_cancel_appointments(): void
+    {
+        $employee = $this->employee();
+        $animal = Animal::factory()->create();
+        $resource = BookingResource::firstOrCreate(['name' => 'Employee care team']);
+        $start = now('Asia/Manila')->addDays(2)->setTime(9, 0);
+        if ($start->isSunday()) {
+            $start->addDay();
+        }
+        $data = ['animal_id' => $animal->id, 'resource_id' => $resource->id, 'service' => 'Consultation', 'starts_at' => $start->toIso8601String(), 'ends_at' => $start->copy()->addMinutes(15)->toIso8601String()];
+        $this->actingAs($employee)->withSession(['employee_session_version' => 0]);
+        $booking = $this->postJson('/api/bookings', $data)->assertCreated()->assertJsonPath('status', 'pending')->json();
+        $this->patchJson('/api/bookings/'.$booking['id'].'/status', ['status' => 'confirmed'])->assertOk()->assertJsonPath('status', 'confirmed');
+        $this->putJson('/api/bookings/'.$booking['id'], array_replace($data, ['starts_at' => $start->copy()->addMinutes(15)->toIso8601String(), 'ends_at' => $start->copy()->addMinutes(30)->toIso8601String()]))
+            ->assertOk()->assertJsonPath('status', 'confirmed');
+        $this->patchJson('/api/bookings/'.$booking['id'].'/status', ['status' => 'cancelled', 'reason' => 'Pet parent requested cancellation'])
+            ->assertOk()->assertJsonPath('status', 'cancelled');
+        $this->assertDatabaseHas('pf_bookings', ['id' => $booking['id'], 'created_by' => $employee->id, 'status' => 'cancelled']);
+    }
+
+    public function test_employee_can_manage_inventory_and_stock_movements(): void
+    {
+        $employee = $this->employee();
+        $this->actingAs($employee)->withSession(['employee_session_version' => 0]);
+        $data = ['name' => 'Employee Supplies', 'sku' => 'EMPLOYEE-001', 'category' => 'Consumables', 'unit' => 'unit', 'unit_price' => 100, 'reorder_level' => 2];
+        $product = $this->postJson('/api/inventory', $data + ['initial_quantity' => 5])->assertCreated()->assertJsonPath('quantity', 5)->json();
+        $this->putJson('/api/inventory/'.$product['id'], array_replace($data, ['name' => 'Updated Supplies']))->assertOk()->assertJsonPath('name', 'Updated Supplies');
+        $this->postJson('/api/inventory/'.$product['id'].'/movements', ['type' => 'restock', 'quantity' => 3, 'reason' => 'Employee restock'])->assertCreated();
+        $this->postJson('/api/inventory/'.$product['id'].'/movements', ['type' => 'issue', 'quantity' => 2, 'reason' => 'Employee issue'])->assertCreated();
+        $this->getJson('/api/stock-movements?product_id='.$product['id'])->assertOk()->assertJsonCount(3, 'data');
+        $this->assertDatabaseHas('pf_stock_products', ['id' => $product['id'], 'quantity' => 6]);
+        $this->assertDatabaseHas('pf_stock_movements', ['product_id' => $product['id'], 'actor_id' => $employee->id, 'type' => 'issue', 'delta' => -2, 'balance' => 6]);
+        $this->patchJson('/api/inventory/'.$product['id'].'/archive', ['archived' => true])->assertOk();
+        $this->patchJson('/api/inventory/'.$product['id'].'/archive', ['archived' => false])->assertOk()->assertJsonPath('archived_at', null);
     }
 
     public function test_admin_validation_and_employee_only_scope_prevent_privilege_changes(): void

@@ -81,7 +81,7 @@ export function SessionProvider({ children }) {
         notify,
         theme,
         setTheme,
-        staff: ['admin', 'veterinarian', 'receptionist'].includes(user?.role),
+        staff: ['admin', 'veterinarian', 'receptionist', 'employee'].includes(user?.role),
         clinician: ['admin', 'veterinarian'].includes(user?.role),
       }}
     >
